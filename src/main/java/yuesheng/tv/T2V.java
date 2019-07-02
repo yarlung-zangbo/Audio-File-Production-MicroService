@@ -13,7 +13,7 @@ public class T2V {
     public static final String API_KEY = "AHo1rGgmZy29ULcCPyBVxcrY";
     public static final String SECRET_KEY = "rtwOSBH7kEjoVrghtfW52MNsWqLupi9Z";
 
-    public String TextToAudioBinary(String text) {
+    public String TextToAudioBinary(String text,String title) {
         // 初始化一个AipSpeech
         AipSpeech client = new AipSpeech(APP_ID, API_KEY, SECRET_KEY);
 
@@ -31,6 +31,9 @@ public class T2V {
 
         // 调用接口
         int length = text.length(), i = 0, j = 0, resLength;
+        System.out.println(text);
+        text.replaceAll("\n"," ");
+        System.out.println(text);
         System.out.println(length);
         System.out.println(text.substring(0,3));
         byte[] result = new byte[0],oldResult;
@@ -40,8 +43,8 @@ public class T2V {
             else {
                 i+=512;
                 char c = text.charAt(i);
-                while(i<1024&&c!='。'&&c!='！'&&c!='？'&&c!='，'&&c!='；'&&c!='…')
-                    c = text.charAt(++i);
+                while(i<length&&i<1024&&c!='。'&&c!='！'&&c!='？'&&c!='，'&&c!='；'&&c!='…')
+                    c = text.charAt(i++);
             }
             System.out.println("i= "+i);
             String excerpt = text.substring(j,i);
@@ -58,7 +61,7 @@ public class T2V {
         }
         if (result != null) {
             try {
-                Util.writeBytesToFileSystem(result, "output7.mp3");
+                Util.writeBytesToFileSystem(result, title+".mp3");
                 return "Output.";
             } catch (IOException e) {
                 e.printStackTrace();
