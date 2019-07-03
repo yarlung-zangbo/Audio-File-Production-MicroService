@@ -2,9 +2,12 @@ package yuesheng.tv;
 import com.baidu.aip.speech.AipSpeech;
 import com.baidu.aip.speech.TtsResponse;
 import com.baidu.aip.util.Util;
+import org.jaudiotagger.audio.AudioFileIO;
+import org.jaudiotagger.audio.mp3.MP3AudioHeader;
+import org.jaudiotagger.audio.mp3.MP3File;
 import org.json.JSONObject;
 
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -61,12 +64,66 @@ public class T2V {
         }
         if (result != null) {
             try {
-                Util.writeBytesToFileSystem(result, title+".mp3");
+                String voicepath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+".mp3";
+                Util.writeBytesToFileSystem(result, voicepath);
+                File read = new File(voicepath);
+                File bg = new File("D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\Various Artists - 国际歌 (俄语).mp3");
+                int readLength = T2V.getMp3TrackLength(read);
+                System.out.println("Audio file length: "+ readLength);
+                int bgLength = T2V.getMp3TrackLength(bg);
+                byte[] bgBytes = T2V.getBytes(bg);
+                ByteArrayOutputStream bos = new ByteArrayOutputStream(1000);
+                int times = bgLength / bgLength;
+                byte[] newBG = new byte[(times+1)*bgBytes.length];
+                for(i = 0; i<times; i+=bgLength){
+                    System.arraycopy(bgBytes,0,newBG,i*bgLength,bgBytes.length);
+                }
+                String newBGPath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"_BG"+".mp3";
+                String outPath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"WBG"+".mp3";
+                Util.writeBytesToFileSystem(newBG, newBGPath);
+                FFMpegUtil.convetor(voicepath, newBGPath,outPath);
                 return "Output.";
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
         return "Failure occurred.";
+    }
+    public static int getMp3TrackLength(File mp3File) {
+        try {
+            MP3File f = (MP3File) AudioFileIO.read(mp3File);
+            MP3AudioHeader audioHeader = (MP3AudioHeader)f.getAudioHeader();
+            return audioHeader.getTrackLength();
+        } catch(Exception e) {
+            return -1;
+        }
+    }
+    private static byte[] getBytes(File file) {
+        System.out.println(file.getName());
+        byte[] buffer = null, result = new byte[0],oldresult = null;
+        try {
+            FileInputStream fis = new FileInputStream(file);
+            DataInputStream dis = new DataInputStream(fis);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream(1000);
+            byte[] b = new byte[1048576];
+            int n,offset=0,available = fis.available();
+            System.out.println(available);
+            while ((n=dis.read(b))!=-1) {
+                bos.write(b, 0, n);
+                buffer = bos.toByteArray();
+                oldresult = result;
+                result = new byte[result.length+buffer.length];
+                System.arraycopy(oldresult,0,result,0,oldresult.length);
+                System.arraycopy(buffer,0,result,oldresult.length,buffer.length);
+            }
+            fis.close();
+            bos.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }
