@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class T2V {
@@ -40,6 +41,7 @@ public class T2V {
         System.out.println(length);
         System.out.println(text.substring(0,3));
         byte[] result = new byte[0],oldResult;
+        ByteArrayOutputStream ResBOS = new ByteArrayOutputStream(1024);
         while(i<length){
             j=i;
             if(length-i<512) i = length;
@@ -51,37 +53,43 @@ public class T2V {
             }
             System.out.println("i= "+i);
             String excerpt = text.substring(j,i);
-            TtsResponse res = client.synthesis(excerpt, "zh", 1, null);
+            HashMap<String,Object> options = new HashMap<String,Object>();
+            options.put("vol",8);
+            TtsResponse res = client.synthesis(excerpt, "zh", 1, options);
             byte[] ResponseB = res.getData();
-            oldResult = result;
-            result = new byte[ResponseB.length+result.length];
-            System.arraycopy(oldResult,0, result,0,oldResult.length);
-            System.arraycopy(ResponseB,0,result,oldResult.length,ResponseB.length);
+            ResBOS.write(ResponseB,0,ResponseB.length);
             JSONObject res1 = res.getResult();
             if(res1!=null) {
                 System.out.println(res1.toString());
             }
         }
+        result = ResBOS.toByteArray();
         if (result != null) {
             try {
                 String voicepath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+".mp3";
                 Util.writeBytesToFileSystem(result, voicepath);
                 File read = new File(voicepath);
-                File bg = new File("D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\Various Artists - 国际歌 (俄语).mp3");
+                File bg = new File("D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\static\\Various Artists - 国际歌 (俄语).mp3");
                 int readLength = T2V.getMp3TrackLength(read);
                 System.out.println("Audio file length: "+ readLength);
                 int bgLength = T2V.getMp3TrackLength(bg);
+                System.out.println("readLength: "+readLength+", "+"bgLength: "+bgLength);
                 byte[] bgBytes = T2V.getBytes(bg);
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(1000);
-                int times = bgLength / bgLength;
-                byte[] newBG = new byte[(times+1)*bgBytes.length];
-                for(i = 0; i<times; i+=bgLength){
-                    System.arraycopy(bgBytes,0,newBG,i*bgLength,bgBytes.length);
-                }
                 String newBGPath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"_BG"+".mp3";
-                String outPath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"WBG"+".mp3";
-                Util.writeBytesToFileSystem(newBG, newBGPath);
+                File reWrite = new File("D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"_BG"+".mp3");
+                BufferedOutputStream buos = new BufferedOutputStream(new FileOutputStream(reWrite,true));
+                int times = readLength / bgLength;
+                for(i = 0; i<times; i++){
+                    System.out.println("i: " + i);
+                    buos.write(bgBytes);
+                }
+                buos.flush();
+                buos.close();
+                String outPath = "D:\\软件工程导论\\week19\\tv\\src\\main\\resources\\"+title+"_With_BGM"+".mp3";
+                System.out.println("Convertor entered");
                 FFMpegUtil.convetor(voicepath, newBGPath,outPath);
+                System.out.println("Convertor done.");
                 return "Output.";
             } catch (Exception e) {
                 e.printStackTrace();
@@ -98,7 +106,7 @@ public class T2V {
             return -1;
         }
     }
-    private static byte[] getBytes(File file) {
+    public static byte[] getBytes(File file) {
         System.out.println(file.getName());
         byte[] buffer = null, result = new byte[0],oldresult = null;
         try {
@@ -109,13 +117,10 @@ public class T2V {
             int n,offset=0,available = fis.available();
             System.out.println(available);
             while ((n=dis.read(b))!=-1) {
+                System.out.println(n+" bytes read.");
                 bos.write(b, 0, n);
-                buffer = bos.toByteArray();
-                oldresult = result;
-                result = new byte[result.length+buffer.length];
-                System.arraycopy(oldresult,0,result,0,oldresult.length);
-                System.arraycopy(buffer,0,result,oldresult.length,buffer.length);
             }
+            result = bos.toByteArray();
             fis.close();
             bos.close();
 
